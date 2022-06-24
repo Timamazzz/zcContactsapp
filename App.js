@@ -6,16 +6,13 @@
  * @flow strict-local
  */
 
-import React from 'react';
-import type {Node} from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
   Text,
-  useColorScheme,
+  TouchableOpacity,
+  FlatList,
   View,
+  PermissionsAndroid,
 } from 'react-native';
 
 import {
@@ -26,87 +23,96 @@ import {
   ReloadInstructions,
 } from 'react-native/Libraries/NewAppScreen';
 
-const Section = ({children, title}): Node => {
-  const isDarkMode = useColorScheme() === 'dark';
+import Contacts from 'react-native-contacts';
+
+PermissionsAndroid.request(
+  PermissionsAndroid.PERMISSIONS.READ_CONTACTS,
+  {
+    'title': 'Contacts',
+    'message': 'This app would like to view your contacts.',
+    'buttonPositive': 'Please accept bare mortal'
+  }
+)
+  .then(Contacts.getAll()
+    .then((contacts) => {
+        // work with contacts
+          console.log('Contacts permissions: true')
+        })
+          .catch((e) => {
+              console.log(e)
+          }))
+
+const App = () => {
+  const [data, setData] = useState([])
+  useEffect(() => {
+    getContactCounts();
+    getAllContacts();
+  }, [])
+
+  const getAllContacts = async () => {
+    let contactArr = []
+    const result = await Contacts.getAll();
+    result.forEach((item) => {
+      contactArr = [...contactArr, { contactId: item.rawContactId, displayName: item.displayName, image: item.thumbnailPath, familyName: item.familyName, phoneNumber: item.phoneNumbers[0].number }]
+    })
+    console.log('getAllContacts(): ', result)
+    setData(contactArr)
+  }
+  const getContactCounts = async () => {
+    const result = await Contacts.getCount();
+    console.log('getContactCounts(): ', result)
+  }
+  const getContactById = async (id) => {
+    const result = await Contacts.getContactById(id)
+    console.log('getContactById(): ', result)
+  }
+  const onCreateNewContact = async () => {
+    const contact = {
+      familyName: "Contact",
+      givenName: "Test",
+      phoneNumbers: [{
+        label: "mobile",
+        number: "+7 999 999 99 99"
+      }]
+    }
+    const result = await Contacts.openContactForm(contact);
+    console.log('onCreateNewContact(): ', result)
+  }
+
+  const renderItem = ({ item }) => {
+    return (
+      <>
+        <TouchableOpacity onPress={() => {
+          getContactById(item.contactId)
+        }}>
+          <View style={{ flexDirection: "row", borderBottomWidth: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{ backgroundColor: 'blue', height: 50, width: 50, borderRadius: 9999, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ color: '#fff', fontSize: 20 }}>{item.displayName.charAt(0).toUpperCase() + " " + item.familyName.charAt(0).toUpperCase()} </Text>
+            </View>
+            <View style={{ padding: 20, flex: 4 }}>
+              <Text>{item.displayName}</Text>
+              <Text>{item.phoneNumber}</Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </>
+    )
+  }
   return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
+    <View style={{ flex: 1, padding: 20 }}>
+      <TouchableOpacity onPress={() => {
+        onCreateNewContact();
+      }}>
+        <Text>Create new contact</Text>
+      </TouchableOpacity>
+      <FlatList
+        data={data}
+        renderItem={renderItem}
+        keyExtractor={item => item.contactId}
+      />
     </View>
-  );
-};
+  )
+}
 
-const App: () => Node = () => {
-  const isDarkMode = useColorScheme() === 'dark';
-
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
-
-  return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.js</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-};
-
-const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-});
 
 export default App;
